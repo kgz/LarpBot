@@ -1,0 +1,14 @@
+{
+    "name": "kgz/lapbot",
+    "description": "A Betting Bot for Discord.",
+    "authors": [
+        {
+            "name": "Mat Frayne",
+            "email": "Mat.Frayne@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "team-reflex/discord-php": "^5.1"
+    }
+}

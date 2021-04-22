@@ -1,0 +1,3 @@
+-- CREATE DATABASE IF NOT EXISTS `larpbot`;
+-- USE `larpbot`
+CREATE TABLE IF NOT EXISTS users (id TEXT, points INT DEFAULT 0);

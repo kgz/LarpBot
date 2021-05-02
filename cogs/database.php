@@ -22,11 +22,31 @@ class Database
 
 
     private function setup():void{
-        $query = "CREATE TABLE IF NOT EXISTS users (id TEXT, points INT DEFAULT 0, wins INT DEFAULT 0, loses INT DEFAULT 0);";
+        $query = "CREATE TABLE IF NOT EXISTS users (id varchar(25) UNIQUE, points INT DEFAULT 0, wins INT DEFAULT 0, loses INT DEFAULT 0);";
         $result = $this->conn->query($query);
         if($result)
-            echo "SQL: Created User Table.", PHP_EOL;
+            echo "SQL: Created User Table.", $result, PHP_EOL;
    
     }
+
+    private function insertUser(string $id):bool{
+        $query = "INSERT IGNORE INTO users(id) VALUES ($id)";
+        $result = $this->conn->query($query);
+        echo "insertUser: $result";
+        return boolval($result);
+    }
+
+    public function givePoints(string $id, int $amount){
+        if($amount == 0) return;
+
+        $this->insertUser($id);
+        $query = "UPDATE users SET points = points + $amount WHERE id = $id";
+        $result = $this->conn->query($query);
+        echo "givePoints: $result";
+        
+        return $result;
+
+    }
+
 
 }

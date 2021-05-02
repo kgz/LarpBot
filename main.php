@@ -17,12 +17,7 @@ class Bot extends Discord{
         $this->commands = $commands;
         $this->prefix = $prefix;
         $this->db = new Database($DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD);
-    
     }
-    public function onheartbeat(){
-        echo "hb";
-    }
-
 }
 
 // DATABASE STUFF
@@ -47,11 +42,9 @@ $bot->setup("!", $COMMANDS, "localhost", 3306, 'root', '');
 $bot->on('ready', function ($discord) {
 	echo "Bot is ready!", PHP_EOL;
 
-    //On MESSAGE
     $discord->on('message', function ($message, $discord) {
         // print_r($message);
 
-        //check if we sent the message or message doesnt start with prefix
         if($message->author->id == $discord->id) return;
         if($message->content[0] != $discord->prefix) return;
 
@@ -63,13 +56,15 @@ $bot->on('ready', function ($discord) {
                 $f = $discord->commands[$messCommand];
                 // TODO: Sanitize and check 
                 $f($message, $discord, substr($mess, strlen($command)));
+                echo "{$message->author->username}: {$message->content}",PHP_EOL;
+
                 return;
             }
 
         }
 
         
-		echo "{$message->author->username}: {$message->content}",PHP_EOL;
+		// echo "{$message->author->username}: {$message->content}",PHP_EOL;
 	});
 });
 

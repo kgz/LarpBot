@@ -15,7 +15,8 @@ $COMMANDS = [
     "doubt" => "doubt",
     "believe" => "believe",
     "give" => "givePoints",
-    "take" => "takePoints"
+    "take" => "takePoints",
+    'points' => 'points'
     // "create" => "createBet",
     // "create" => "createBet"
 ];
@@ -28,33 +29,40 @@ function ping($ctx, $bot, $str)
 
 function createBet($ctx, $bot, $str)
 {
-    if ($bot->bet) 
-        return $ctx->channel->sendMessage("There is already a bet going, it will start in: {$bot->bet->timeLeft}");
+
+    if ($bot->bets[$ctx->channel->guild_id] ?? null) 
+        return $ctx->channel->sendMessage("There is already a bet going, it will start in: {$bot->bets[$ctx->channel->guild_id]->timeLeft}");
     if (!trim($str))
         return $ctx->channel->sendMessage("usage: !create will x do y?");
 
-    $ctx->channel->sendMessage("create");
-    $bot->bet = new Bet($ctx, $str, $bot);
-    $bot->bet->start($bot);
+    $ctx->channel->sendMessage("created");
+    $bot->bets[$ctx->channel->guild_id] = new Bet($ctx, $str, $bot);
+    $bot->bets[$ctx->channel->guild_id]->start($bot);
 }
 
 function _start($ctx, $bot, $str)
-{
-    if (!$bot->bet) 
+{ /**
+ * 
+ * 
+ * check if theres already a bet going
+ * 
+ */
+    if (!array_key_exists($ctx->channel->guild_id, $bot->bets))
         return $ctx->channel->sendMessage("you need to start a bet, !create");
-    if ($ctx->author->id == $bot->bet->authorId) 
-        $bot->bet->toStart = 0;
+    if ($ctx->author->id == $bot->bets[$ctx->channel->guild_id]->authorId) 
+        $bot->bets[$ctx->channel->guild_id]->toStart = 0;
 }
 
 function _stop($ctx, $bot, $str)
 {
-    if (!$bot->bet)
+    if (!$bot->bets[$ctx->channel->guild_id ?? null] ?? null)
         return $ctx->channel->sendMessage("you need to start a bet, !create");
         
-    if ($ctx->author->id == $bot->bet->authorId) {
+    if ($ctx->author->id == $bot->bets[$ctx->channel->guild_id]->authorId) {
 
         $true = ["1", "b", "believe", "true", "t", "believers"];
         $false = ["0", "d", "doubt", "false", "f", "doubters"];
+        $none = ["n", "none", "null", "draw"];
         $winners = null;
 
         switch(true){
@@ -62,34 +70,86 @@ function _stop($ctx, $bot, $str)
                 $winners = 1; break;
             case in_array(strtolower(trim($str)), $false):
                 $winners = 0; break;
+            case in_array(strtolower(trim($str)), $none):
+                $winners = 2; break;
+
+
         }
             
         if($winners === null)
-            return $ctx->channel->sendMessage("Please indicate a winner. \n\n `!stop b` for believers or\n`!stop d` for doubters");
+            return $ctx->channel->sendMessage("Please indicate a winner. \n\n `!stop b` for believers,\n`!stop d` for doubters,\n`!stop draw`");
         
-        $bot->bet->timeLeft = 0;
-        $bot->bet->finishBet($winners);
-        $bot->bet = null;
+        $bot->bets[$ctx->channel->guild_id]->timeLeft = 0;
+        $bot->bets[$ctx->channel->guild_id]->started = false;
+
+        $bot->bets[$ctx->channel->guild_id]->finishBet($winners);
     }
 }
 
 
+function doubtBelievePreCheck($ctx, $bot, $str){ 
+    $error = false;
+    $bet =  $bot->bets[$ctx->channel->guild_id];
+    
+    if(trim($str) == "all")
+        $str = $bot->db->balance($ctx->channel->guild_id, $ctx->author->id);
+    
+    $balance  = $bot->db->balance($ctx->channel->guild_id, $ctx->author->id);
+    
+    switch(true){
+
+        case !$bot->bets[$ctx->channel->guild_id]->started:
+            $error = "please wait for the bet to start ({$bot->bets[$ctx->channel->guild_id]->toStart} seconds)";
+            break;
+        case array_key_exists($ctx->author->id, $bet->believers):
+            $error = "{$ctx->author->name}: You have already voted to believe!";
+            break;
+        case array_key_exists($ctx->author->id, $bet->doubters):
+            $error = "{$ctx->author->name}: You have already voted to doubt!";
+            break;
+
+        case !is_numeric($str):
+            $error = "Error: Amount must be a numeric value.";
+            break;
+        
+        case intval($str) < 1:
+            $error = "Value must be above 0";
+            break;
+        case $balance < intval($str):
+            $error = "You only have $balance points.";
+            break;
+
+         
+    }
+    if($error) $ctx->channel->sendMessage($error);
+    
+    return $error ? false : intval($str);
+
+}
+
 function doubt($ctx, $bot, $str)
 {
-    if (!in_array($ctx->author->id, $bot->bet->believers) &&
-        !in_array($ctx->author->id, $bot->bet->doubters)) 
-            return array_push($bot->bet->doubters, $ctx->author->id);
-    $ctx->channel->sendMessage("{$ctx->author->name}: You can only vote once.");
+    $amount = doubtBelievePreCheck($ctx, $bot, $str);
+    if(!$amount) return;
+
+    $bot->db->removePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
+    $bot->bets[$ctx->channel->guild_id]->doubters[$ctx->author->id] = $amount;
+
+    print_r($bot->bets[$ctx->channel->guild_id]->doubters);
+    print_r($bot->bets[$ctx->channel->guild_id]->believers);
 }
 
 
 function believe($ctx, $bot, $str)
 {
-    if (!in_array($ctx->author->id, $bot->bet->believers) &&
-        !in_array($ctx->author->id, $bot->bet->doubters)) 
-            return array_push($bot->bet->believers, $ctx->author->id);
-    $ctx->channel->sendMessage("{$ctx->author->name}: You can only vote once.");
+    $amount = doubtBelievePreCheck($ctx, $bot, $str);
 
+    if(!$amount) return;
+    $bot->db->removePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
+    $bot->bets[$ctx->channel->guild_id]->believers[$ctx->author->id] = $amount;
+
+    print_r($bot->bets[$ctx->channel->guild_id]->doubters);
+    print_r($bot->bets[$ctx->channel->guild_id]->believers);
 }
 
 
@@ -130,8 +190,8 @@ function givePoints($ctx, $bot, $str)
     if(!$args) return;
 
     $amount = intval($args[1]);
-
-    $result = $bot->db->givePoints($ctx->author->id, $amount);
+    print_r($ctx->channel->guild_id);
+    $result = $bot->db->givePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
 
     print_r($result);
 }
@@ -148,7 +208,12 @@ function takePoints($ctx, $bot, $str)
 
     $amount = intval($args[1]);
 
-    $result = $bot->db->givePoints($ctx->author->id, $amount);
+    $result = $bot->db->givePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
 
     print_r($result);
+}
+
+
+function points($ctx, $bot, $str){
+    $ctx->channel->sendMessage("Balance: {$bot->db->balance($ctx->channel->guild_id, $ctx->author->id)}");
 }

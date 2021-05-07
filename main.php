@@ -11,7 +11,7 @@ class Bot extends Discord{
     public $commands;
     public $prefix;
     public $db;
-    public ?Bet $bet = null;
+    public Array $bets = [];
 
     public function setup(string $prefix,  array $commands, $DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD){
         $this->commands = $commands;

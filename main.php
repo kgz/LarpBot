@@ -1,14 +1,33 @@
 <?php
+
 use Discord\Discord;
+use Discord\WebSockets\Intents;
+
+
 require_once __DIR__.'/cogs/Bet.php';
+include_once __DIR__."/cogs/Utils.php";
 
 include_once __DIR__.'/cogs/commands.php';
 
 include __DIR__.'/vendor/autoload.php';
 include __DIR__.'/cogs/database.php';
 
+
+/**
+ * Extends the Discord class.
+ * 
+ * @property Array                      $commands               Array of commands and name of relevent funtions.
+ * @property String                     $prefix                 The bot prefix to use.
+ * @property String                     $DATABASE_IP            The ip of the MYSLQ database.
+ * @property String                     $DATABASE_PORT          The port of the MYSLQ database.
+ * @property String                     $DATABASE_USERNAME      The username of the MYSLQ database.
+ * @property String                     $DATABASE_PASSWORD      The password of the MYSLQ database.
+ *  
+ */
+
+
 class Bot extends Discord{
-    public $commands;
+    public array $commands;
     public $prefix;
     public $db;
     public Array $bets = [];
@@ -16,8 +35,11 @@ class Bot extends Discord{
     public function setup(string $prefix,  array $commands, $DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD){
         $this->commands = $commands;
         $this->prefix = $prefix;
-        $this->db = new Database($DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD);
+        $this->db = new Database($this, $DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD);
+
     }
+
+
 }
 
 // DATABASE STUFF
@@ -34,12 +56,16 @@ pclose( popen( 'start /B mysqld  > NUL', 'r' ) );
 
 $bot = new Bot([
     'token' => getenv('LarpBot'),
-    'loggerLevel' => Monolog\Logger::ERROR]);
+    'loggerLevel' => Monolog\Logger::ERROR,
+    'loadAllMembers' => true,
+    // 'intents' => Intents::GUILD_MEMBERS // Enable the `GUILD_MEMBERS` intent
+    ]);
 $bot->setup("!", $COMMANDS, "localhost", 3306, 'root', '');
 
 
 //MAIN LOOP
 $bot->on('ready', function ($discord) {
+
 	echo "Bot is ready!", PHP_EOL;
 
     $discord->on('message', function ($message, $discord) {

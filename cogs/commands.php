@@ -34,10 +34,10 @@ function createBet($ctx, $bot, $str)
         return $ctx->channel->sendMessage("There is already a bet going, it will start in: {$bot->bets[$ctx->channel->guild_id]->timeLeft}");
     if (!trim($str))
         return $ctx->channel->sendMessage("usage: !create will x do y?");
-
-    $ctx->channel->sendMessage("created");
     $bot->bets[$ctx->channel->guild_id] = new Bet($ctx, $str, $bot);
     $bot->bets[$ctx->channel->guild_id]->start($bot);
+    $ctx->react("✅");
+
 }
 
 function _start($ctx, $bot, $str)
@@ -134,9 +134,10 @@ function doubt($ctx, $bot, $str)
 
     $bot->db->removePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
     $bot->bets[$ctx->channel->guild_id]->doubters[$ctx->author->id] = $amount;
+    $ctx->react("✅");
 
-    print_r($bot->bets[$ctx->channel->guild_id]->doubters);
-    print_r($bot->bets[$ctx->channel->guild_id]->believers);
+    // print_r($bot->bets[$ctx->channel->guild_id]->doubters);
+    // print_r($bot->bets[$ctx->channel->guild_id]->believers);
 }
 
 
@@ -147,20 +148,25 @@ function believe($ctx, $bot, $str)
     if(!$amount) return;
     $bot->db->removePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
     $bot->bets[$ctx->channel->guild_id]->believers[$ctx->author->id] = $amount;
+    $ctx->react("✅");
 
-    print_r($bot->bets[$ctx->channel->guild_id]->doubters);
-    print_r($bot->bets[$ctx->channel->guild_id]->believers);
+    // print_r($bot->bets[$ctx->channel->guild_id]->doubters);
+    // print_r($bot->bets[$ctx->channel->guild_id]->believers);
 }
 
 
 function giveTakePreCheck($ctx, $bot, $str){
-    
     $args = preg_split('/\s+/', $str, -1, PREG_SPLIT_NO_EMPTY);
     preg_match('/(\d{17,18})/', $args[0], $out);
     $user = $out?[1]:null;
     $error = false;
 
     switch(true){
+    
+        case !isAdmin($ctx, $bot, "administrator, manage_guild"); 
+            echo "invalid permissions", PHP_EOL;
+            return false;
+            break;
         case count($args) < 2:
             $error = "Usage:\n `!give <@user> <amount>`";
             break;
@@ -182,9 +188,6 @@ function giveTakePreCheck($ctx, $bot, $str){
 
 function givePoints($ctx, $bot, $str)
 {
-    /**
-     * TODO PERMISSIONS 
-     */
     $args = giveTakePreCheck($ctx, $bot, $str);
     echo (bool)$args, "----",  PHP_EOL;
     if(!$args) return;
@@ -194,15 +197,13 @@ function givePoints($ctx, $bot, $str)
     $result = $bot->db->givePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
 
     print_r($result);
+    $ctx->react("✅");
 }
 
 
 
 function takePoints($ctx, $bot, $str)
 {
-    /**
-     * TODO PERMISSIONS 
-     */
     $args = giveTakePreCheck($ctx, $bot, $str);
     if(!$args) return;
 
@@ -211,9 +212,12 @@ function takePoints($ctx, $bot, $str)
     $result = $bot->db->givePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
 
     print_r($result);
+    $ctx->react("✅");
+
 }
 
 
 function points($ctx, $bot, $str){
-    $ctx->channel->sendMessage("Balance: {$bot->db->balance($ctx->channel->guild_id, $ctx->author->id)}");
+    $points  = number_format_short($bot->db->balance($ctx->channel->guild_id, $ctx->author->id));
+    $ctx->channel->sendMessage("Balance: {$points}");
 }

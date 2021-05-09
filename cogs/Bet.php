@@ -3,7 +3,6 @@
 use Discord\Parts\Channel\Message;
 use Discord\Parts\Embed\Embed;
 use Discord\Parts\Embed\Author;
-require_once __DIR__."/Utils.php";
 
 /**
  * Creates and manages a 'Bet' instance.
@@ -100,8 +99,6 @@ class Bet{
         });
     }
 
-
-
     private function payoutLogic($winner, $winnerPayout, $loser){
         $totalWon = 0;
         $totalLost = 0;
@@ -116,23 +113,20 @@ class Bet{
             );
             $totalWon = $totalWon + $won;
         } 
-
-
-        foreach(array_keys($loser) as $user){
-            
+        foreach(array_keys($loser) as $user){ 
             $totalLost = $totalLost + $loser[$user];
         } 
-
         return $totalWon;
-
     }
+
     public function finishBet($winners){
-        // $this->started = false;
+
         if($winners == -1){
             $this->channel->sendMessage("The bet is now closed, type `!stop <'b', 'd' or 'draw'>` to select a winner");
             $this->footerMessage = "Finished, type !stop <'b', 'd' or 'draw'>";
             return ;
         }
+
         unset($this->bot->bets[$this->guildId]);
 
         switch(true){
@@ -140,49 +134,24 @@ class Bet{
                 $this->payoutLogic($this->believers, 0, []);
                 $this->payoutLogic($this->doubters, 0, []);
                 $this->footerMessage = "Bet resulted in a draw";
-
                 break;
 
             case $winners == 1:
                 $points = $this->payoutLogic($this->believers, $this->winPayout['believe'], $this->doubters);
                 $this->footerMessage = "Bet resulted in believers winning, paid out $points points.";
-
                 break;
 
             case $winners == 0:
                 $points = $this->payoutLogic($this->doubters, $this->winPayout['doubt'], $this->believers);
                 $points = number_format_short($points);
                 $this->footerMessage = "Bet resulted in believers winning, paid out $points points.";
-
                 break;
-
-
-
-            }
-
-
-
-        
+        }
 
         $this->channel->sendMessage("the bet is complete $winners");
         $newEmbed = $this->formEmbed($this->bot);
         $this->updateMessage($newEmbed);
-
         return;
-
-
-
-
-        /**
-         * 
-         * 
-         * TODO winning logic
-         * 
-         */
-
-
-
-
     }
 
     private function updateMessage(Embed $embed){

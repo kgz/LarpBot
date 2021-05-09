@@ -1,9 +1,8 @@
 <?php
-
 use Discord\Discord;
 use Discord\WebSockets\Intents;
 
-
+require_once __DIR__.'/cogs/Logger.php';
 require_once __DIR__.'/cogs/Bet.php';
 include_once __DIR__."/cogs/Utils.php";
 
@@ -12,16 +11,15 @@ include_once __DIR__.'/cogs/commands.php';
 include __DIR__.'/vendor/autoload.php';
 include __DIR__.'/cogs/database.php';
 
-
 /**
  * Extends the Discord class.
  * 
  * @property Array                      $commands               Array of commands and name of relevent funtions.
  * @property String                     $prefix                 The bot prefix to use.
- * @property String                     $DATABASE_IP            The ip of the MYSLQ database.
- * @property String                     $DATABASE_PORT          The port of the MYSLQ database.
- * @property String                     $DATABASE_USERNAME      The username of the MYSLQ database.
- * @property String                     $DATABASE_PASSWORD      The password of the MYSLQ database.
+ * @property String                     $DATABASE_IP            The ip of the MYSQL database.
+ * @property String                     $DATABASE_PORT          The port of the MYSQL database.
+ * @property String                     $DATABASE_USERNAME      The username of the MYSQL database.
+ * @property String                     $DATABASE_PASSWORD      The password of the MYSQL database.
  *  
  */
 
@@ -58,14 +56,15 @@ $bot = new Bot([
     'token' => getenv('LarpBot'),
     'loggerLevel' => Monolog\Logger::ERROR,
     'loadAllMembers' => true,
-    // 'intents' => Intents::GUILD_MEMBERS // Enable the `GUILD_MEMBERS` intent
+    'intents' => Intents::getDefaultIntents() | Intents::GUILD_MEMBERS, // Enable the `GUILD_MEMBERS` intent
+    'loop' => \React\EventLoop\Factory::create(),
+
     ]);
 $bot->setup("!", $COMMANDS, "localhost", 3306, 'root', '');
 
 
 //MAIN LOOP
 $bot->on('ready', function ($discord) {
-
 	echo "Bot is ready!", PHP_EOL;
 
     $discord->on('message', function ($message, $discord) {

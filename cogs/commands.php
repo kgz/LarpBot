@@ -16,7 +16,10 @@ $COMMANDS = [
     "believe" => "believe",
     "give" => "givePoints",
     "take" => "takePoints",
-    'points' => 'points'
+    'points' => 'points',
+    "help" => "help",
+    "delete" => "delete",
+    "settime" => "setTime"
     // "create" => "createBet",
     // "create" => "createBet"
 ];
@@ -24,6 +27,7 @@ $COMMANDS = [
 
 function ping($ctx, $bot, $str)
 {
+    
     $ctx->channel->sendMessage("pong");
 };
 
@@ -49,8 +53,11 @@ function _start($ctx, $bot, $str)
  */
     if (!array_key_exists($ctx->channel->guild_id, $bot->bets))
         return $ctx->channel->sendMessage("you need to start a bet, !create");
-    if ($ctx->author->id == $bot->bets[$ctx->channel->guild_id]->authorId) 
+    if ($ctx->author->id == $bot->bets[$ctx->channel->guild_id]->authorId){
         $bot->bets[$ctx->channel->guild_id]->toStart = 0;
+        $ctx->delete();
+    }
+    
 }
 
 function _stop($ctx, $bot, $str)
@@ -86,6 +93,46 @@ function _stop($ctx, $bot, $str)
     }
 }
 
+function setTime($ctx, $bot, $str){
+    if(!$bot->bets[$ctx->channel->guild_id] ?? false) return;
+
+    if(!is_numeric($str)) return $ctx->channel->sendMessage('Must be a number....');
+    if($ctx->author->id == $bot->bets[$ctx->channel->guild_id]->authorId or
+        isAdmin($ctx, "administrator, manage_guild")){
+
+
+            if($bot->bets[$ctx->channel->guild_id]->started) return 
+            $ctx->channel->sendMessage('You can only change during setup.');
+
+
+
+            $bot->bets[$ctx->channel->guild_id]->timeLeft = intval($str);
+            $bot->bets[$ctx->channel->guild_id]->updateMessage(
+                $bot->bets[$ctx->channel->guild_id]->embed
+            );
+
+            $ctx->react("✅");
+
+
+
+        };
+    //, PHP_EOL;
+
+
+
+
+}
+function delete($ctx, $bot, $str){
+    if(!$bot->bets[$ctx->channel->guild_id] ?? false) return;
+    if($ctx->author->id == $bot->bets[$ctx->channel->guild_id]->authorId or
+        isAdmin($ctx, "administrator, manage_guild")){
+
+        $bot->bets[$ctx->channel->guild_id]->waitingToDieFlag=1;
+        $bot->bets[$ctx->channel->guild_id]->embedMessage->delete();
+        unset($bot->bets[$ctx->channel->guild_id]);
+        $ctx->react("✅");
+    }
+}
 
 function doubtBelievePreCheck($ctx, $bot, $str){ 
     $error = false;
@@ -163,7 +210,7 @@ function giveTakePreCheck($ctx, $bot, $str){
 
     switch(true){
     
-        case !isAdmin($ctx, $bot, "administrator, manage_guild"); 
+        case !isAdmin($ctx, "administrator, manage_guild"); 
             echo "invalid permissions", PHP_EOL;
             return false;
             break;
@@ -180,6 +227,7 @@ function giveTakePreCheck($ctx, $bot, $str){
             break;
     }
 
+    $args[0] = $out[0];
     //check if args [1] is a user id / DISCORD::Mention 
     if($error) $ctx->channel->sendMessage($error);
 
@@ -189,12 +237,13 @@ function giveTakePreCheck($ctx, $bot, $str){
 function givePoints($ctx, $bot, $str)
 {
     $args = giveTakePreCheck($ctx, $bot, $str);
+    print_r($args);
     echo (bool)$args, "----",  PHP_EOL;
     if(!$args) return;
 
     $amount = intval($args[1]);
     print_r($ctx->channel->guild_id);
-    $result = $bot->db->givePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
+    $result = $bot->db->givePoints($ctx->channel->guild_id, $args[0], $amount);
 
     print_r($result);
     $ctx->react("✅");
@@ -209,7 +258,7 @@ function takePoints($ctx, $bot, $str)
 
     $amount = intval($args[1]);
 
-    $result = $bot->db->givePoints($ctx->channel->guild_id, $ctx->author->id, $amount);
+    $result = $bot->db->givePoints($ctx->channel->guild_id, $args[0], $amount);
 
     print_r($result);
     $ctx->react("✅");
@@ -221,3 +270,93 @@ function points($ctx, $bot, $str){
     $points  = number_format_short($bot->db->balance($ctx->channel->guild_id, $ctx->author->id));
     $ctx->channel->sendMessage("Balance: {$points}");
 }
+
+
+
+function help($ctx, $bot, $str){
+    $zws =  json_decode('"\u200b"'); //zero width space
+    $embed = new Embed($bot, [
+        // "title" => "$zws", 
+        // "discription" => "$zws",
+        // "author"=>new Author($bot, [
+        //     "name"=>$bot->user->username, 
+        //     "icon_url"=> $bot->user->avatar,
+        // ]),
+        // "color"=>$this->embedColor,
+        "fields" =>[
+            
+            [
+                "name"=> "!ping",
+                "value"=> "Returns pong\n$zws",
+                "inline"=> true
+            ],
+              [
+                "name"=> "!create <string>",
+                "value"=> "Create a bet.\n$zws",
+                "inline"=> true
+              ],
+              [
+                "name"=> "~~set payout <believe percent> <doubt percent>~~",
+                "value"=> "eg: !set payout 150 120\nwill set the believe payout at 150%\nand the doubt percent at 70%.\n{$zws}\n__note__\n- This is added onto the users bet, 200 bet at 150%\nmeans the user profits 300 points\n{$zws}\ndefault is 100% \n {$zws}",
+                "inline"=> false
+              ],
+              [
+                "name"=> "!settime <seconds>",
+                "value"=> "Set the length of the bet. \n (can only be used when setting up the bet)\n {$zws}",
+                "inline"=> false
+              ],
+              [
+                "name"=> "!stop <b | d | draw>",
+                "value"=> "(owner of the bet only)\nStop the current bet and indicate a winner.\nb = believers.\nd = doubters.\ndraw = draw.\n{$zws}",
+                "inline"=> false
+              ],
+              [
+                "name"=> "!delete",
+                "value"=> "(admin \ owner of the bet)\n{$zws}",
+                "inline"=> false
+              ],
+              [
+                "name"=> "!doubt <points or 'all'>",
+                "value"=> "Doubt.\n{$zws}",
+                "inline"=> true
+              ],
+              [
+                "name"=> "!believe <points or 'all'>",
+                "value"=> "!believe\n{$zws}",
+                "inline"=> true
+              ],
+              [
+                "name"=> "!points",
+                "value"=> "See your points for the current guild.\n{$zws}",
+                "inline"=> false
+              ],
+              [
+                "name"=> "!give @user <points>",
+                "value"=> "(Admin)\n{$zws}",
+                "inline"=> true
+              ],
+              [
+                "name"=> "!take @user <points>",
+                "value"=> "(admin)\n{$zws}",
+                "inline"=> true
+              ],
+
+
+
+   
+             
+              
+
+
+            ],
+            "footer"=> [
+                // "icon_url"=> "https://cdn.discordapp.com/embed/avatars/0.png",
+                "text"=> "The bot will also give out 10 points every 10 mins."],
+
+    ]);
+    $ctx->channel->sendEmbed($embed);
+}
+
+
+
+

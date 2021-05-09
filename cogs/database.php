@@ -22,10 +22,10 @@ class Database
         mysqli_report(MYSQLI_REPORT_ERROR);
 
         $this->conn = new mysqli($DATABASE_IP, $DATABASE_USERNAME, $DATABASE_PASSWORD, "larpbot");
-        if ($this->conn->connect_error) {
+        if ($this->conn->connect_error) 
             die("Connection failed: " . $this->conn->connect_error);
-        }
-        mysqli_query($this->conn, "SET @@SESSION.sql_mode = '';");
+        
+        mysqli_query($this->conn, "SET @@SESSION.sql_mode = '';"); //relax the strictness of mysql
 
         echo "SQL:Successfully connected to db on $DATABASE_IP ", PHP_EOL;
         $this->setup();
@@ -38,7 +38,7 @@ class Database
      * @return void
      */
     private function setup():void{
-        $query = "CREATE TABLE IF NOT EXISTS users (id varchar(25), guild_id varchar(50) UNIQUE, points BIGINT DEFAULT 0, wins INT DEFAULT 0, loses INT DEFAULT 0);";
+        $query = "CREATE TABLE IF NOT EXISTS users (id varchar(25), guild_id varchar(50), points BIGINT DEFAULT 100, wins INT DEFAULT 0, loses INT DEFAULT 0);";
         $result = $this->conn->query($query);
 
         $exists = " SELECT COUNT(1) FROM INFORMATION_SCHEMA.STATISTICS
@@ -67,7 +67,7 @@ class Database
      * @return boolean
      */
     private function insertUser(string $guildId, string $id):bool{
-        $query = "INSERT IGNORE INTO users(id, guild_id, points) VALUES ($id, $guildId, 0)";
+        $query = "INSERT IGNORE INTO users(id, guild_id) VALUES ($id, $guildId)";
         $result = $this->conn->query($query);
         // echo "insertUser: $result";
         // return boolval($result);
@@ -112,7 +112,7 @@ class Database
     }
 
     /**
-     * retrieve a users balance
+     * Retrieve a users balance
      *
      * @param string $guildId
      * @param string $id
@@ -129,13 +129,30 @@ class Database
 
 
     /**
+     * Increase the win/loss value for a user.
+     *
+     * @param string        $guildId        The guild id.
+     * @param string        $id             The users id.
+     * @param boolean       $win            True to increase the users win, false to increase loss count.
+     * @return void
+     */
+    public function updateWinLoss(string $guildId, string $id, bool $win):void{
+        $this->insertUser($guildId, $id);
+        $winVar = $win ? "wins" : "loses";
+        $query = "UPDATE users SET $winVar = $winVar + 1 WHERE id = $id AND guild_id = $guildId;";
+        $result = $this->conn->query($query);
+    }
+
+
+
+    /**
      * function used to give users points every x seconds.
      *
      * @param Discord $bot
      * @return void
      */
     public function pocketMoney($bot){
-        $bot->loop->addtimer(60, function() use ($bot){
+        $bot->loop->addtimer(36000, function() use ($bot){
 
             foreach($bot->guilds as $guild){
                 $guild_id = $guild->id;

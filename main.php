@@ -1,6 +1,7 @@
 <?php
 use Discord\Discord;
 use Discord\WebSockets\Intents;
+use Discord\Parts\User\Activity;
 
 require_once __DIR__.'/cogs/Logger.php';
 require_once __DIR__.'/cogs/Bet.php';
@@ -60,13 +61,18 @@ $bot = new Bot([
     'loop' => \React\EventLoop\Factory::create(),
 
     ]);
-$bot->setup("!", $COMMANDS, $DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD);
+$bot->setup("?", $COMMANDS, $DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD);
 
 
 //MAIN LOOP
 $bot->on('ready', function ($discord) {
 	echo "Bot is ready!", PHP_EOL;
+    $game = $discord->factory(Activity::class, [
+        'name' => $discord->prefix . 'help',
+        'type' => Activity::TYPE_LISTENING
+    ]);
 
+    $discord->updatePresence($game);
     $discord->on('message', function ($message, $discord) {
         // print_r($message);
 

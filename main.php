@@ -60,7 +60,7 @@ $bot = new Bot([
     'loop' => \React\EventLoop\Factory::create(),
 
     ]);
-$bot->setup("!", $COMMANDS, "localhost", 3306, 'root', '');
+$bot->setup("!", $COMMANDS, $DATABASE_IP, $DATABASE_PORT, $DATABASE_USERNAME, $DATABASE_PASSWORD);
 
 
 //MAIN LOOP

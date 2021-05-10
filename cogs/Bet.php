@@ -60,7 +60,7 @@ class Bet{
         $this->bet = $bet;
         $this->author = new Author($bot, [
             "name"=>$ctx->author->username, 
-            "icon_url"=> $ctx->author->avatar,
+            "icon_url"=> $ctx->author->avatar ?? $ctx->author->user->avatar,
         ]);
         $this->authorId = $ctx->author->id;
         $this->bot = $bot;
@@ -113,7 +113,6 @@ class Bet{
                 case !$this->started:
                     if($this->toStart % 5 == 0)
                         $this->description = "Bet will auto start in {$this->toStart}";
-                    echo $this->toStart, PHP_EOL;
                     $this->footerMessage = "{$this->timeLeft}s | !start | !set time <seconds> | !delete";
                     break;
                     

@@ -25,7 +25,7 @@ include __DIR__.'/cogs/database.php';
 
 
 class Bot extends Discord{
-    public array $commands;
+    public Array $commands;
     public $prefix;
     public $db;
     public Array $bets = [];
